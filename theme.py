@@ -103,6 +103,13 @@ CORRESPONDANCES = {
     "#b8d8e0": SOMBRE["entete_second"],
     "#c8d2d8": SOMBRE["bordure"],
     "#cfe3e8": SOMBRE["selection"],
+    # compléments (P13)
+    "#007ACC": SOMBRE["accent"],
+    "#b06b00": SOMBRE["alerte"],
+    "#bdbdbd": SOMBRE["texte_faible"],
+    "#c8d3d8": SOMBRE["bordure"],
+    "#c9d4d8": SOMBRE["bordure"],
+    "#fbfcfc": SOMBRE["fond_alt"],
 }
 
 # couleurs du calendrier (tkcalendar)

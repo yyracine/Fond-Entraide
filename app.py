@@ -14,6 +14,7 @@ from tkinter import ttk, messagebox
 import db
 from liste_pdf_mixin import BoutonListePDF
 from ui_commun import CadreDefilant
+from ecran_base import EcranHierarchique
 from ecran_grandes_familles import EcranGrandesFamilles
 from ecran_lignees import EcranLignees
 from ecran_familles import EcranFamilles
@@ -42,294 +43,68 @@ class BarreEtat(ttk.Frame):
         self.var.set(texte)
 
 
-class EcranClans(BoutonListePDF, ttk.Frame):
+class EcranClans(EcranHierarchique):
     """
-    Étape 1 — Saisie des clans.
+    Étape 1 — Saisie des clans (niveau racine, sans parent).
 
-    Un clan est le sommet de la hiérarchie : il n'a pas de parent.
-    Son nom doit être unique dans toute la base.
+    Implémenté sur le squelette générique `EcranHierarchique` (P10) :
+    seuls les champs spécifiques (description) et la requête de liste
+    (nombre de grandes familles) sont redéfinis.
     """
-
     NIVEAU = "clan"
-    LISTE_TITRE = "Étape 1 — Les clans"
+    TITRE = "Étape 1 — Les clans"
+    LABEL_PARENT = "Parent"
+    ARTICLE_PARENT = "le parent"
+    TEXTE_AIDE = ("Un clan est le sommet de la hiérarchie.\n"
+                  "Son nom doit être unique dans la base.")
+    TEXTE_VIDE = ("Aucun clan enregistré.\n"
+                  "Commencez par « Nouveau clan » à droite.")
 
-    def __init__(self, parent, con, etat):
-        super().__init__(parent, padding=12)
-        self.con = con
-        self.etat = etat
-        self.id_selection = None
-        self.en_edition = False
+    COLONNES = (
+        ("nom", "Clan", 200, "w"),
+        ("gf", "Grandes familles", 120, "center"),
+        ("desc", "Description", 240, "w"),
+    )
+    CHAMPS = (("description", "Description", "text"),)
 
-        self._construire()
-        self.recharger()
+    def requete_liste(self):
+        return ("""
+            SELECT t.id, t.nom, t.description,
+                   (SELECT COUNT(*) FROM grandes_familles gf
+                     WHERE gf.clan_id = t.id) AS gf
+            FROM clans t
+            __FILTRE__
+            ORDER BY t.nom COLLATE NOCASE
+        """, [])
 
-    # ----------------------------------------------------------------
-    #  Interface
-    # ----------------------------------------------------------------
-    def _construire(self):
-        self.columnconfigure(0, weight=1)
-        self.columnconfigure(1, weight=0, minsize=340)
-        self.rowconfigure(1, weight=1)
+    def valeurs_ligne(self, row):
+        desc = (row["description"] or "").replace("\n", " ")
+        return (row["nom"], row["gf"], desc)
 
-        entete = ttk.Frame(self)
-        entete.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 10))
-        ttk.Label(
-            entete,
-            text="Étape 1 — Les clans",
-            font=("Segoe UI", 16, "bold"),
-            foreground=COULEUR_ENTETE,
-        ).pack(side="left")
-        self.btn_liste_pdf = ttk.Button(entete, text="Liste en PDF…",
-                                        width=16,
-                                        command=self.exporter_liste_pdf)
-        self.btn_liste_pdf.pack(side="right", padx=(8, 0))
-        self.lbl_total = ttk.Label(entete, text="", font=("Segoe UI", 10))
-        self.lbl_total.pack(side="right")
+    def charger_champs(self, row):
+        w = self.widgets["description"][0]
+        w.delete("1.0", "end")
+        w.insert("1.0", row["description"] or "")
 
-        # --- liste des clans -----------------------------------------
-        bloc_liste = ttk.LabelFrame(self, text="Clans enregistrés", padding=8)
-        bloc_liste.grid(row=1, column=0, sticky="nsew", padx=(0, 10))
-        bloc_liste.columnconfigure(0, weight=1)
-        bloc_liste.rowconfigure(0, weight=1)
+    def lire_champs(self):
+        w = self.widgets["description"][0]
+        return {"description": w.get("1.0", "end").strip() or None}
 
-        colonnes = ("nom", "gf", "desc")
-        self.table = ttk.Treeview(
-            bloc_liste, columns=colonnes, show="headings", selectmode="browse"
-        )
-        self.table.heading("nom", text="Clan")
-        self.table.heading("gf", text="Grandes familles")
-        self.table.heading("desc", text="Description")
-        self.table.column("nom", width=200)
-        self.table.column("gf", width=120, anchor="center")
-        self.table.column("desc", width=240)
-        self.table.grid(row=0, column=0, sticky="nsew")
+    def libelle_parent(self, row):
+        return ""
 
-        sy = ttk.Scrollbar(bloc_liste, orient="vertical", command=self.table.yview)
-        sy.grid(row=0, column=1, sticky="ns")
-        self.table.configure(yscrollcommand=sy.set)
-        self.table.bind("<<TreeviewSelect>>", self._sur_selection)
-        self.table.bind("<Double-1>", lambda e: self.passer_en_edition())
-
-        self.lbl_vide = ttk.Label(
-            bloc_liste,
-            text="Aucun clan enregistré.\n"
-                 "Commencez par « Nouveau clan » à droite.",
-            justify="center",
-            foreground="#8a8a8a",
-        )
-
-        # --- formulaire ----------------------------------------------
-        bloc_fiche = ttk.LabelFrame(self, text="Fiche du clan", padding=4)
-        bloc_fiche.grid(row=1, column=1, sticky="nsew")
-        bloc_fiche.rowconfigure(0, weight=1)
-        bloc_fiche.columnconfigure(0, weight=1)
-        defilant = CadreDefilant(bloc_fiche)
-        defilant.grid(row=0, column=0, sticky="nsew")
-        bloc_form = ttk.Frame(defilant.contenu, padding=8)
-        bloc_form.grid(row=0, column=0, sticky="nsew")
-        bloc_form.columnconfigure(0, weight=1)
-
-        ttk.Label(bloc_form, text="Nom du clan *").grid(
-            row=0, column=0, columnspan=2, sticky="w", pady=(0, 2)
-        )
-        self.var_nom = tk.StringVar()
-        self.ent_nom = ttk.Entry(bloc_form, textvariable=self.var_nom, width=30)
-        self.ent_nom.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
-
-        ttk.Label(bloc_form, text="Description").grid(
-            row=2, column=0, columnspan=2, sticky="w", pady=(0, 2)
-        )
-        self.txt_desc = tk.Text(bloc_form, height=5, width=30, wrap="word")
-        self.txt_desc.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(0, 12))
-
-        self.lbl_aide = ttk.Label(
-            bloc_form,
-            text="Un clan est le sommet de la hiérarchie.\n"
-                 "Son nom doit être unique dans la base.",
-            foreground="#5a6a72",
-            justify="left",
-        )
-        self.lbl_aide.grid(row=4, column=0, columnspan=2, sticky="w", pady=(0, 12))
-
-        zone_boutons = ttk.Frame(bloc_form)
-        zone_boutons.grid(row=5, column=0, columnspan=2, sticky="ew")
-        for i in range(2):
-            zone_boutons.columnconfigure(i, weight=1)
-
-        self.btn_valider = ttk.Button(
-            zone_boutons, text="Enregistrer", command=self.enregistrer
-        )
-        self.btn_valider.grid(row=0, column=0, sticky="ew", padx=(0, 4), pady=3)
-
-        self.btn_annuler = ttk.Button(
-            zone_boutons, text="Annuler", command=self.annuler
-        )
-        self.btn_annuler.grid(row=0, column=1, sticky="ew", padx=(4, 0), pady=3)
-
-        self.btn_nouveau = ttk.Button(
-            zone_boutons, text="Nouveau clan", command=self.nouveau
-        )
-        self.btn_nouveau.grid(row=1, column=0, sticky="ew", padx=(0, 4), pady=3)
-
-        self.btn_modifier = ttk.Button(
-            zone_boutons, text="Modifier", command=self.passer_en_edition
-        )
-        self.btn_modifier.grid(row=1, column=1, sticky="ew", padx=(4, 0), pady=3)
-
-        self.btn_supprimer = ttk.Button(
-            zone_boutons, text="Supprimer", command=self.supprimer
-        )
-        self.btn_supprimer.grid(row=2, column=0, columnspan=2, sticky="ew", pady=3)
-
-        self.ent_nom.bind("<Return>", lambda e: self.enregistrer())
-
-    # ----------------------------------------------------------------
-    #  Données
-    # ----------------------------------------------------------------
-    def recharger(self, garder_id=None):
-        self.table.delete(*self.table.get_children())
-        lignes = db.lister(self.con, self.NIVEAU)
-        for id_, nom, nb in lignes:
-            desc = self.con.execute(
-                "SELECT description FROM clans WHERE id = ?", (id_,)
-            ).fetchone()
-            desc = (desc["description"] or "").replace("\n", " ") if desc else ""
-            self.table.insert("", "end", iid=str(id_), values=(nom, nb, desc))
-
-        total = len(lignes)
-        self.lbl_total.config(
-            text=f"{total} clan{'s' if total > 1 else ''} enregistré"
-                 f"{'s' if total > 1 else ''}"
-        )
-        if total == 0:
-            self.lbl_vide.place(relx=0.5, rely=0.4, anchor="center")
-        else:
-            self.lbl_vide.place_forget()
-
-        if garder_id is not None and self.table.exists(str(garder_id)):
-            self.table.selection_set(str(garder_id))
-            self.table.see(str(garder_id))
-        else:
-            self.id_selection = None
-            self._maj_boutons()
-
-    def _sur_selection(self, _evt=None):
-        """Un clic sur une ligne quitte le mode création et charge la fiche."""
-        sel = self.table.selection()
-        if not sel:
-            return
-        self.id_selection = int(sel[0])
-        self.en_edition = False
-        self.btn_valider.config(text="Enregistrer")
-        self._charger_fiche(self.id_selection)
-        self._maj_boutons()
-
-    def _charger_fiche(self, id_):
-        row = self.con.execute(
-            "SELECT nom, description FROM clans WHERE id = ?", (id_,)
-        ).fetchone()
-        self.var_nom.set(row["nom"])
-        self.txt_desc.delete("1.0", "end")
-        self.txt_desc.insert("1.0", row["description"] or "")
-
+    # Racine : création autorisée même sans parent.
     def _maj_boutons(self):
         actif = self.id_selection is not None
         self.btn_modifier.state(["!disabled"] if actif else ["disabled"])
         self.btn_supprimer.state(["!disabled"] if actif else ["disabled"])
         self.btn_annuler.state(["!disabled"] if self.en_edition else ["disabled"])
+        self.btn_nouveau.state(["!disabled"])
 
-    def _vider(self):
-        self.var_nom.set("")
-        self.txt_desc.delete("1.0", "end")
-
-    # ----------------------------------------------------------------
-    #  Actions
-    # ----------------------------------------------------------------
-    def nouveau(self):
-        self.en_edition = False
-        self.id_selection = None
-        self.table.selection_remove(*self.table.selection())
-        self._vider()
-        self.en_edition = True
-        self.btn_valider.config(text="Enregistrer")
-        self.ent_nom.focus_set()
-        self._maj_boutons()
-        self.etat.info("Nouveau clan : saisissez son nom puis Enregistrer.")
-
-    def passer_en_edition(self):
-        if self.id_selection is None:
-            messagebox.showinfo(
-                "Aucune sélection", "Sélectionnez d'abord un clan dans la liste."
-            )
-            return
-        self._charger_fiche(self.id_selection)
-        self.en_edition = True
-        self.btn_valider.config(text="Mettre à jour")
-        self.ent_nom.focus_set()
-        self.ent_nom.selection_range(0, "end")
-        self._maj_boutons()
-        self.etat.info("Modification du clan sélectionné.")
-
-    def annuler(self):
-        self.en_edition = False
-        if self.id_selection is not None:
-            self._charger_fiche(self.id_selection)
-        else:
-            self._vider()
-        self.btn_valider.config(text="Enregistrer")
-        self._maj_boutons()
-        self.etat.info("Saisie annulée.")
-
-    def enregistrer(self):
-        nom = self.var_nom.get()
-        desc = self.txt_desc.get("1.0", "end").strip() or None
-        try:
-            if self.en_edition and self.id_selection is None:
-                nouveau_id = db.ajouter(self.con, self.NIVEAU, nom, description=desc)
-                message = f"Clan « {db.nettoyer_nom(nom)} » créé."
-            elif self.id_selection is not None:
-                db.modifier(self.con, self.NIVEAU, self.id_selection, nom,
-                            description=desc)
-                nouveau_id = self.id_selection
-                message = f"Clan « {db.nettoyer_nom(nom)} » mis à jour."
-            else:
-                messagebox.showinfo(
-                    "Rien à enregistrer",
-                    "Cliquez sur « Nouveau clan » ou sélectionnez un clan à modifier.",
-                )
-                return
-        except db.ErreurSaisie as e:
-            messagebox.showerror("Saisie refusée", str(e))
-            self.ent_nom.focus_set()
-            return
-
-        self.en_edition = False
-        self.btn_valider.config(text="Enregistrer")
-        self.recharger(garder_id=nouveau_id)
-        self.etat.info(message)
-
-    def supprimer(self):
-        if self.id_selection is None:
-            return
-        nom = self.var_nom.get().strip()
-        if not messagebox.askyesno(
-            "Confirmer la suppression",
-            f"Supprimer définitivement le clan « {nom} » ?",
-        ):
-            return
-        try:
-            db.supprimer(self.con, self.NIVEAU, self.id_selection)
-        except db.ErreurSaisie as e:
-            messagebox.showwarning("Suppression refusée", str(e))
-            return
-        self.id_selection = None
-        self._vider()
-        self.recharger()
-        self.etat.info(f"Clan « {nom} » supprimé.")
-
-    # ----------------------------------------------------------------
-    def focus_initial(self):
-        self.ent_nom.focus_set()
+    # alias pour compatibilité
+    @property
+    def var_nom_compat(self):
+        return self.var_nom
 
 
 ICO = "relation.ico"
