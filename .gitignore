@@ -15,6 +15,11 @@ base_choisie.json
 # Logs
 logs/
 
+# PyInstaller
+build/
+dist/
+*.spec
+
 # Excel source
 *.xlsx
 
