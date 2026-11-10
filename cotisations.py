@@ -309,8 +309,16 @@ def enregistrer_versement(con, membre_id, annee, mois_coches, date_paiement,
     if montant_total <= 0:
         raise db.ErreurSaisie("Le montant doit être supérieur à zéro.")
 
-    # répartition du montant sur les mois cochés
-    part = round(montant_total / len(mois_coches), 2)
+    # répartition du montant sur les mois cochés.
+    # On calcule une part arrondie, puis on corrige le reliquat d'arrondi sur
+    # le dernier mois pour que SUM(affectations.montant) == montant_total
+    # (évite les écarts de 0,01 comme 5 000 / 3 = 1 666,67 × 3 = 5 000,01).
+    _n = len(mois_coches)
+    _part = round(montant_total / _n, 2)
+    parts = [_part] * _n
+    _reliquat = round(montant_total - sum(parts), 2)
+    if _reliquat:
+        parts[-1] = round(parts[-1] + _reliquat, 2)
     try:
         cur = con.execute("""
             INSERT INTO paiements
@@ -320,10 +328,10 @@ def enregistrer_versement(con, membre_id, annee, mois_coches, date_paiement,
         """, (membre_id, camp["id"], str(date_paiement), montant_total,
               mode, reference, observation))
         paiement_id = cur.lastrowid
-        for m in mois_coches:
+        for m, p in zip(mois_coches, parts):
             con.execute(
                 "INSERT INTO affectations (paiement_id, annee, mois, montant) "
-                "VALUES (?, ?, ?, ?)", (paiement_id, annee, m, part))
+                "VALUES (?, ?, ?, ?)", (paiement_id, annee, m, p))
         con.commit()
     except Exception as e:
         con.rollback()

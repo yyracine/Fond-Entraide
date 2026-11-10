@@ -6,6 +6,7 @@ garanti à trois niveaux : liste filtrée, bouton désactivé, contrôle SQL).
 
 Lancement autonome pour tester : python ecran_grandes_familles.py
 """
+import sqlite3
 import tkinter as tk
 from tkinter import ttk, messagebox
 
@@ -323,12 +324,10 @@ class EcranGrandesFamilles(BoutonListePDF, ttk.Frame):
                                         parent_id=clan_id, description=desc)
                 message = f"Grande famille « {db.nettoyer_nom(nom)} » créée."
             elif self.id_selection is not None:
-                # le clan parent reste modifiable : on le met à jour aussi
+                # le clan parent reste modifiable : on le met à jour aussi,
+                # dans la même requête, pour convertir toute IntegrityError
                 db.modifier(self.con, self.NIVEAU, self.id_selection, nom,
-                            description=desc)
-                self.con.execute("UPDATE grandes_familles SET clan_id = ? "
-                                 "WHERE id = ?", (clan_id, self.id_selection))
-                self.con.commit()
+                            description=desc, clan_id=clan_id)
                 nouveau_id = self.id_selection
                 message = f"Grande famille « {db.nettoyer_nom(nom)} » mise à jour."
             else:
@@ -336,8 +335,18 @@ class EcranGrandesFamilles(BoutonListePDF, ttk.Frame):
                                     "Cliquez sur « Nouvelle grande famille » "
                                     "ou sélectionnez-en une à modifier.")
                 return
-        except db.ErreurSaisie as e:
-            messagebox.showerror("Saisie refusée", str(e))
+        except (db.ErreurSaisie, sqlite3.IntegrityError) as e:
+            try:
+                self.con.rollback()
+            except Exception:
+                pass
+            if isinstance(e, sqlite3.IntegrityError):
+                messagebox.showerror(
+                    "Saisie refusée",
+                    "Modification impossible : la nouvelle valeur viole une "
+                    "contrainte d'intégrité. (%s)" % e)
+            else:
+                messagebox.showerror("Saisie refusée", str(e))
             return
 
         self.en_edition = False

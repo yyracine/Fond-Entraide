@@ -15,6 +15,7 @@ Les sous-classes décrivent seulement :
     CHAMPS          liste de champs spécifiques au niveau (au-delà du nom)
     requete_liste() requête SQL alimentant la liste
 """
+import sqlite3
 import tkinter as tk
 from tkinter import ttk, messagebox
 
@@ -397,12 +398,14 @@ class EcranHierarchique(BoutonListePDF, ttk.Frame):
                                         parent_id=parent_id, **extras)
                 message = f"« {db.nettoyer_nom(nom)} » créé."
             elif self.id_selection is not None:
+                # Le parent hiérarchique (clan_id, famille_id, …) est aussi
+                # modifiable : on le passe à db.modifier pour qu'il soit traité
+                # dans la même requête (et que toute IntegrityError soit
+                # convertie en ErreurSaisie, pas en exception brute).
+                parent_col = db.NIVEAUX[self.NIVEAU]["parent_col"]
+                if parent_col:
+                    extras[parent_col] = parent_id
                 db.modifier(self.con, self.NIVEAU, self.id_selection, nom, **extras)
-                col = db.NIVEAUX[self.NIVEAU]["parent_col"]
-                self.con.execute(
-                    f"UPDATE {db.NIVEAUX[self.NIVEAU]['table']} SET {col} = ? "
-                    f"WHERE id = ?", (parent_id, self.id_selection))
-                self.con.commit()
                 nouveau_id = self.id_selection
                 message = f"« {db.nettoyer_nom(nom)} » mis à jour."
             else:
@@ -410,8 +413,19 @@ class EcranHierarchique(BoutonListePDF, ttk.Frame):
                                     "Cliquez sur « Nouveau » ou sélectionnez "
                                     "une ligne à modifier.")
                 return
-        except db.ErreurSaisie as e:
-            messagebox.showerror("Saisie refusée", str(e))
+        except (db.ErreurSaisie, sqlite3.IntegrityError) as e:
+            try:
+                self.con.rollback()
+            except Exception:
+                pass
+            if isinstance(e, sqlite3.IntegrityError):
+                messagebox.showerror(
+                    "Saisie refusée",
+                    "Modification impossible : la nouvelle valeur viole une "
+                    "contrainte d'intégrité (parent dans une autre famille ?). "
+                    f"({e})")
+            else:
+                messagebox.showerror("Saisie refusée", str(e))
             return
 
         self.en_edition = False

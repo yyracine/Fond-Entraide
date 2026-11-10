@@ -103,6 +103,24 @@ def test_enregistrer_versement_refuse_doublon(tmp_path):
     raise AssertionError("doublon accepté")
 
 
+def test_enregistrer_versement_arrondi_exact(tmp_path):
+    if not REF_DB.exists():
+        import pytest
+        pytest.skip("base de référence absente")
+    con, _ = _copie_db(tmp_path)
+    impayes = C.mois_impayes(con, 1, 2024)
+    if len(impayes) < 3:
+        import pytest
+        pytest.skip("pas assez de mois impayés")
+    pid = C.enregistrer_versement(con, 1, 2024, impayes[:3], "2024-12-28",
+                                  montant_total=5000)
+    parts = [r["montant"] for r in con.execute(
+        "SELECT montant FROM affectations WHERE paiement_id = ?", (pid,))]
+    total = con.execute(
+        "SELECT montant_total FROM paiements WHERE id = ?", (pid,)).fetchone()["montant_total"]
+    assert abs(sum(parts) - total) < 1e-9
+
+
 def test_situation_complet_logique(con):
     # sanity : situation renvoie bien les clés attendues
     s = C.situation(con, 1, 2024)
