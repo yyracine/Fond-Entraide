@@ -56,13 +56,24 @@ def vue_ensemble(con, annee):
 
     nb_familles = con.execute("SELECT COUNT(*) FROM familles").fetchone()[0]
 
-    # membres à jour = ceux qui ont réglé tous les mois échus
+    # membres à jour = ceux qui ont réglé tous les mois échus.
+    # Calcul en une seule requête d'agrégation (pas de N+1).
     a_jour = 0
     if echeances:
-        for m in con.execute("SELECT id FROM membres WHERE statut='actif'"):
-            s = C.situation(con, m["id"], annee)
-            payes = len([1 for mo in range(1, echeances + 1)
-                         if s["mois_payes"].get(mo, 0) >= mensuel])
+        # somme versée par (membre, mois) pour l'année
+        mois_payes = {}
+        for r in con.execute("""
+            SELECT p.membre_id AS mid, a.mois AS mois,
+                   SUM(a.montant) AS total
+            FROM affectations a JOIN paiements p ON p.id = a.paiement_id
+            WHERE a.annee = ?
+            GROUP BY p.membre_id, a.mois
+        """, (annee,)):
+            mois_payes.setdefault(r["mid"], {})[r["mois"]] = r["total"]
+        for (mid,) in con.execute(
+                "SELECT id FROM membres WHERE statut = 'actif'"):
+            payes = sum(1 for mo in range(1, echeances + 1)
+                        if mois_payes.get(mid, {}).get(mo, 0) >= mensuel)
             if payes == echeances:
                 a_jour += 1
 
@@ -149,8 +160,18 @@ def membres_en_retard(con, annee):
     if not echeances:
         return []
 
-    resultat = []
-    for m in con.execute("""
+    # somme versée par (membre, mois) pour l'année — une seule requête
+    mois_payes = {}
+    for r in con.execute("""
+        SELECT p.membre_id AS mid, a.mois AS mois,
+               SUM(a.montant) AS total
+        FROM affectations a JOIN paiements p ON p.id = a.paiement_id
+        WHERE a.annee = ?
+        GROUP BY p.membre_id, a.mois
+    """, (annee,)):
+        mois_payes.setdefault(r["mid"], {})[r["mois"]] = r["total"]
+
+    membres = con.execute("""
         SELECT m.id, m.nom, m.prenom, f.nom AS famille, cl.nom AS clan
         FROM membres m
         JOIN familles f ON f.id = m.famille_id
@@ -160,17 +181,19 @@ def membres_en_retard(con, annee):
         WHERE m.statut = 'actif'
         ORDER BY cl.nom COLLATE NOCASE, f.nom COLLATE NOCASE,
                  m.nom COLLATE NOCASE
-    """):
-        s = C.situation(con, m["id"], annee)
+    """).fetchall()
+
+    resultat = []
+    for m in membres:
+        mp = mois_payes.get(m["id"], {})
         payes = [mo for mo in range(1, echeances + 1)
-                 if s["mois_payes"].get(mo, 0) >= mensuel]
+                 if mp.get(mo, 0) >= mensuel]
         manquants = echeances - len(payes)
         if manquants <= 0:
             continue
         du = manquants * mensuel
-        # mois en retard, en clair
         mois_du = [C.MOIS_COURTS[mo - 1] for mo in range(1, echeances + 1)
-                   if s["mois_payes"].get(mo, 0) < mensuel]
+                   if mp.get(mo, 0) < mensuel]
         resultat.append({
             "membre_id": m["id"],
             "membre": f"{m['nom']} {m['prenom'] or ''}".strip(),
@@ -203,10 +226,23 @@ def grille_mensuelle(con, annee, famille_id=None):
         params.append(famille_id)
     sql += " ORDER BY f.nom COLLATE NOCASE, m.nom COLLATE NOCASE"
 
+    membres = con.execute(sql, params).fetchall()
+
+    # toutes les affectations de l'année en une requête
+    month_sums = {}
+    for r in con.execute("""
+        SELECT p.membre_id AS mid, a.mois AS mois,
+               SUM(a.montant) AS total
+        FROM affectations a JOIN paiements p ON p.id = a.paiement_id
+        WHERE a.annee = ?
+        GROUP BY p.membre_id, a.mois
+    """, (annee,)):
+        month_sums.setdefault(r["mid"], {})[r["mois"]] = r["total"]
+
     lignes = []
-    for m in con.execute(sql, params):
-        payes = C.mois_payes(con, m["id"], annee)
-        mois = [payes.get(mo, 0) for mo in range(1, 13)]
+    for m in membres:
+        mp = month_sums.get(m["id"], {})
+        mois = [mp.get(mo, 0) for mo in range(1, 13)]
         lignes.append({
             "membre": f"{m['nom']} {m['prenom'] or ''}".strip(),
             "famille": m["famille"],

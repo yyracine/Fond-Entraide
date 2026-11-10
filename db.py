@@ -34,12 +34,110 @@ def connecter_lecture_seule(db_path):
     return con
 
 
+def _migrer_recus(con):
+    """Migration idempotente : numérotation des reçus dans `paiements`.
+
+    - ajoute la colonne `numero_recu` si elle manque (bases anciennes) ;
+    - migre les numéros stockés dans `parametres` (`recu_paiement_<id>`) ;
+    - peuple `recu_sequences` depuis `parametres` (`recu_numeros`) et/ou
+      depuis les numéros déjà présents dans `paiements`.
+    """
+    try:
+        cols = {r[1] for r in con.execute("PRAGMA table_info(paiements)")}
+    except sqlite3.Error:
+        return
+    if "numero_recu" not in cols:
+        try:
+            con.execute("ALTER TABLE paiements ADD COLUMN numero_recu TEXT")
+            con.commit()
+        except sqlite3.Error:
+            return
+    # index d'unicité (créé après l'ajout de la colonne)
+    try:
+        con.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_paiements_numero_recu ON paiements(numero_recu)")
+        con.commit()
+    except sqlite3.Error:
+        pass
+    # migre les numéros déjà attribués (parametres -> paiements)
+    try:
+        import parametres as P
+        P._assurer_table(con)
+        for (pid,) in con.execute("SELECT id FROM paiements").fetchall():
+            if con.execute(
+                    "SELECT numero_recu FROM paiements WHERE id = ?", (pid,)
+            ).fetchone()[0] is not None:
+                continue
+            val = P.lire_parametre(con, "recu_paiement_%d" % pid, None)
+            if val:
+                try:
+                    con.execute(
+                        "UPDATE paiements SET numero_recu = ? WHERE id = ?",
+                        (val, pid))
+                except sqlite3.Error:
+                    pass
+        con.commit()
+    except Exception:
+        pass
+
+    # peuple recu_sequences
+    try:
+        con.execute("""CREATE TABLE IF NOT EXISTS recu_sequences (
+            annee INTEGER PRIMARY KEY, dernier INTEGER NOT NULL DEFAULT 0)""")
+        con.commit()
+    except sqlite3.Error:
+        return
+
+    # depuis parametres.recu_numeros
+    try:
+        import json
+        import parametres as P
+        brut = P.lire_parametre(con, "recu_numeros", "")
+        if brut:
+            data = json.loads(brut)
+            if isinstance(data, dict):
+                for an, val in data.items():
+                    try:
+                        a = int(an); d = int(val)
+                    except (TypeError, ValueError):
+                        continue
+                    con.execute("""INSERT INTO recu_sequences (annee, dernier)
+                                   VALUES (?, ?)
+                                   ON CONFLICT(annee) DO UPDATE SET
+                                     dernier = MAX(dernier, excluded.dernier)""",
+                                (a, d))
+        con.commit()
+    except Exception:
+        pass
+
+    # depuis les numéros déjà en base (RECU-AAAA-NNNNNN)
+    try:
+        for (num,) in con.execute(
+                "SELECT numero_recu FROM paiements WHERE numero_recu IS NOT NULL"
+        ).fetchall():
+            # format RECU-<annee>-<num>
+            parts = str(num).split("-")
+            if len(parts) >= 3:
+                try:
+                    a = int(parts[1]); d = int(parts[2])
+                except ValueError:
+                    continue
+                con.execute("""INSERT INTO recu_sequences (annee, dernier)
+                               VALUES (?, ?)
+                               ON CONFLICT(annee) DO UPDATE SET
+                                 dernier = MAX(dernier, excluded.dernier)""",
+                            (a, d))
+        con.commit()
+    except Exception:
+        pass
+
+
 def initialiser(db_path=None):
     """Crée les tables et les vues si nécessaire. Retourne la connexion."""
     chemin = db_path or DB_PATH
     con = connecter(chemin)
     con.executescript(SCHEMA.read_text(encoding="utf-8"))
     con.commit()
+    _migrer_recus(con)
     return con
 
 

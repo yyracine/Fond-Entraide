@@ -131,6 +131,7 @@ CREATE TABLE IF NOT EXISTS paiements (
     reference     TEXT,
     saisi_par     TEXT,
     observation   TEXT,
+    numero_recu   TEXT,
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (membre_id)   REFERENCES membres(id)   ON DELETE CASCADE,
     FOREIGN KEY (campagne_id) REFERENCES campagnes(id) ON DELETE RESTRICT
@@ -147,6 +148,16 @@ CREATE TABLE IF NOT EXISTS affectations (
     montant     REAL NOT NULL CHECK (montant >= 0),
     UNIQUE (paiement_id, annee, mois),
     FOREIGN KEY (paiement_id) REFERENCES paiements(id) ON DELETE CASCADE
+);
+
+-- ---------------------------------------------------------------------
+-- 9. SÉQUENCES DE NUMÉROTATION DES REÇUS
+--    Garde le dernier numéro attribué par année : il ne fait que monter,
+--    même si un versement (et son reçu) est supprimé ensuite.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS recu_sequences (
+    annee   INTEGER PRIMARY KEY,
+    dernier INTEGER NOT NULL DEFAULT 0
 );
 
 -- ---------------------------------------------------------------------

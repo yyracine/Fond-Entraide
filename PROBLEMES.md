@@ -32,7 +32,7 @@
 | P05 | 🟠 | `IntegrityError` non interceptée au changement de famille / de clan | `ecran_base.py`, `ecran_grandes_familles.py` | Non (bug d'implémentation) |
 | P06 | 🟠 | L'import aplatit la généalogie (niveaux 2 et 3 accrochés au niveau 1) | `import_complet.py` | Non (script jetable) |
 | P07 | 🟠 | Requêtes N+1 sur toutes les synthèses | `tableau_de_bord.py`, `ecran_cotisations.py` | **Oui** (si le portage copie les requêtes) |
-| P08 | 🟠 | Numéros de reçus stockés dans `parametres` (1 clé par paiement) | `recus.py`, `parametres.py` | **Oui** (modèle) |
+| P08 | ✅ | Numérotation des reçus migrée vers `paiements.numero_recu` + table `recu_sequences` (high-water mark) | `recus.py`, `schema.sql`, `db.py` | Résolu |
 | P09 | 🟡 | La vue `v_solde_membre_campagne` calcule `montant_mensuel * 12` | `schema.sql` | Non (vue non utilisée) |
 | P10 | 🟡 | Duplication des écrans hiérarchiques (~1 000 lignes) | `app.py`, `ecran_base.py`, `ecran_grandes_familles.py` | Non (disparaît au portage) |
 | P11 | 🟡 | Échecs silencieux (`except Exception: pass`) | `app.py`, `theme.py`, `mode_demo.py` | Partiellement |

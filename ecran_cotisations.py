@@ -404,19 +404,37 @@ class EcranCotisations(ttk.Frame):
         sql += " ORDER BY f.nom COLLATE NOCASE, m.nom COLLATE NOCASE"
 
         self.membres_affiches = self.con.execute(sql, params).fetchall()
+
+        # Agrégation en une seule requête (pas de N+1) : somme par
+        # (membre, mois) pour l'année choisie.
+        month_sums = {}
+        for r in self.con.execute("""
+            SELECT p.membre_id AS mid, a.mois AS mois,
+                   SUM(a.montant) AS total
+            FROM affectations a JOIN paiements p ON p.id = a.paiement_id
+            WHERE a.annee = ?
+            GROUP BY p.membre_id, a.mois
+        """, (annee,)):
+            month_sums.setdefault(r["mid"], {})[r["mois"]] = r["total"]
+
+        camp = C.campagne(self.con, annee)
+        mensuel = camp["montant_mensuel"] if camp else 1000
+        echus = C.mois_echus(self.con, annee) or 1   # evite « 0/0 »
+
+        total = 0
         for m in self.membres_affiches:
-            sit = C.situation(self.con, m["id"], annee)
-            echus = sit["mois_echus"] or 1      # evite « 0/0 »
+            mp = month_sums.get(m["id"], {})
+            nb_mois = len(mp)
+            verse = sum(mp.values())
+            total += verse
             self.table.insert(
                 "", "end", iid=str(m["id"]),
                 values=(f"{m['nom']} {m['prenom'] or ''}".strip(),
                         m["famille"],
-                        f"{sit['nb_mois']}/{echus}",
-                        f"{int(sit['verse']):,}".replace(",", " ")))
+                        f"{nb_mois}/{echus}",
+                        f"{int(verse):,}".replace(",", " ")))
 
         nb = len(self.membres_affiches)
-        total = sum(C.situation(self.con, m["id"], annee)["verse"]
-                    for m in self.membres_affiches)
         self.lbl_annee_total.config(
             text=f"{annee} — {nb} membre(s) affiché(s) · "
                  f"{int(total):,} FCFA".replace(",", " "))

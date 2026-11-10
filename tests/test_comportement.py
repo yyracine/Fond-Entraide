@@ -8,6 +8,7 @@ from pathlib import Path
 import cotisations as C
 import db
 import parametres as P
+import recus as R
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 REF_DB = BASE_DIR / "cotisations.db"
@@ -141,6 +142,45 @@ def test_ouvrir_exercice_accepte_civil(tmp_path):
     con, _ = _copie_db(tmp_path)
     action = P.ouvrir_exercice(con, "Civil", "2027-01-01", "2027-12-31", 1000, 2027)
     assert action in ("cree", "modifie")
+
+
+def test_recu_numero_idempotent(tmp_path):
+    if not REF_DB.exists():
+        import pytest
+        pytest.skip("base de référence absente")
+    con, _ = _copie_db(tmp_path)
+    n1 = R.attribuer_numero(con, 1, 2024)
+    n2 = R.attribuer_numero(con, 1, 2024)
+    assert n1 == n2
+    assert R.numero_existant(con, 1) == n1
+
+
+def test_recu_numero_incremente(tmp_path):
+    if not REF_DB.exists():
+        import pytest
+        pytest.skip("base de référence absente")
+    con, _ = _copie_db(tmp_path)
+    a = R.attribuer_numero(con, 1, 2024)
+    b = R.attribuer_numero(con, 3, 2024)
+    # 3 est un nouveau versement -> numéro suivant
+    assert a != b
+
+
+def test_recu_numero_unique(tmp_path):
+    if not REF_DB.exists():
+        import pytest
+        pytest.skip("base de référence absente")
+    con, _ = _copie_db(tmp_path)
+    import sqlite3
+    R.attribuer_numero(con, 1, 2024)
+    # forcer un doublon doit violer la contrainte UNIQUE
+    try:
+        con.execute("UPDATE paiements SET numero_recu = ? WHERE id = 2",
+                    (R.numero_existant(con, 1),))
+        con.commit()
+        raise AssertionError("doublon accepté")
+    except sqlite3.IntegrityError:
+        con.rollback()
 
 
 def test_situation_complet_logique(con):

@@ -5,18 +5,18 @@ Ce module ne touche pas à l'interface : il prépare les données du reçu
 (fichier PDF produit par `exports.recu_pdf`) à partir de la base.
 
 Numérotation : `RECU-<année paiement>-<numéro>` (ex. RECU-2026-000147).
-Le numéro est **stable** : il est stocké dans la table `parametres`
-(clé `recu_numeros`) et n'est jamais réattribué, même si un versement est
-supprimé ensuite. Le compteur ne fait que monter.
+Le numéro est **stable** : il est stocké sur `paiements.numero_recu`
+(contrainte UNIQUE) et le compteur par année vit dans `recu_sequences`
+(high-water mark) : il ne fait que monter, même si un versement est supprimé
+ensuite. Plus de stockage dans `parametres`.
 """
 import datetime
-import json
 
 import cotisations as C
 import db
 import parametres as P
 
-CLE_NUMEROS = "recu_numeros"
+CLE_NUMEROS = "recu_numeros"  # conservé pour compatibilité, non utilisé
 
 UNITES = ("zéro", "un", "deux", "trois", "quatre", "cinq", "six", "sept",
           "huit", "neuf", "dix", "onze", "douze", "treize", "quatorze",
@@ -101,49 +101,46 @@ def _entier_en_lettres(n):
 # ---------------------------------------------------------------------
 #  Numérotation des reçus
 # ---------------------------------------------------------------------
-def _lire_compteurs(con):
-    brut = P.lire_parametre(con, CLE_NUMEROS, "")
-    if not brut:
-        return {}
-    try:
-        data = json.loads(brut)
-    except (TypeError, ValueError):
-        return {}
-    return data if isinstance(data, dict) else {}
-
-
-def _ecrire_compteurs(con, compteurs):
-    P.ecrire_parametre(con, CLE_NUMEROS, json.dumps(compteurs))
-
-
 def numero_existant(con, paiement_id):
     """Numéro de reçu déjà attribué à ce versement, ou None."""
-    return P.lire_parametre(con, "recu_paiement_%d" % paiement_id, None)
+    r = con.execute("SELECT numero_recu FROM paiements WHERE id = ?",
+                    (paiement_id,)).fetchone()
+    if r is None:
+        return None
+    return r["numero_recu"]
 
 
 def attribuer_numero(con, paiement_id, annee):
     """Renvoie le numéro de reçu du versement, en le créant si besoin.
 
-    Le numéro est mémorisé par versement : réimprimer un reçu ne change
-    jamais son numéro.
+    Le numéro est stocké sur `paiements.numero_recu` (contrainte UNIQUE) et
+    le compteur par année vit dans `recu_sequences` : il ne fait que monter,
+    même si un versement est supprimé ensuite.
     """
-    cle_paiement = "recu_paiement_%d" % paiement_id
-    deja = P.lire_parametre(con, cle_paiement, None)
+    deja = numero_existant(con, paiement_id)
     if deja:
         return deja
-    compteurs = _lire_compteurs(con)
-    suivant = int(compteurs.get(str(annee), 0)) + 1
-    compteurs[str(annee)] = suivant
+
+    # high-water mark pour l'année
+    r = con.execute("SELECT dernier FROM recu_sequences WHERE annee = ?",
+                    (annee,)).fetchone()
+    suivant = (r["dernier"] if r else 0) + 1
+    con.execute("""INSERT INTO recu_sequences (annee, dernier) VALUES (?, ?)
+                   ON CONFLICT(annee) DO UPDATE SET dernier = ?""",
+                (annee, suivant, suivant))
     numero = "RECU-%s-%06d" % (annee, suivant)
-    P.ecrire_parametre(con, cle_paiement, numero)
-    _ecrire_compteurs(con, compteurs)
+    con.execute("UPDATE paiements SET numero_recu = ? WHERE id = ?",
+                (numero, paiement_id))
+    con.commit()
     return numero
 
 
 def prochain_numero(con, annee):
     """Numéro qui SERA attribué au prochain versement de cette année."""
-    compteurs = _lire_compteurs(con)
-    return "RECU-%s-%06d" % (annee, int(compteurs.get(str(annee), 0)) + 1)
+    r = con.execute("SELECT dernier FROM recu_sequences WHERE annee = ?",
+                    (annee,)).fetchone()
+    suivant = (r["dernier"] if r else 0) + 1
+    return "RECU-%s-%06d" % (annee, suivant)
 
 
 # ---------------------------------------------------------------------
