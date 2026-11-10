@@ -7,6 +7,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).parent
 DB_PATH = BASE_DIR / "familles.db"
 SCHEMA = BASE_DIR / "schema.sql"
+CONFIG_BASE = BASE_DIR / "base_choisie.json"
 
 
 class ErreurSaisie(Exception):
@@ -128,6 +129,32 @@ def _migrer_recus(con):
                             (a, d))
         con.commit()
     except Exception:
+        pass
+
+
+import json as _json
+
+
+def lire_chemin_base():
+    """Chemin de la base choisie par l'utilisateur, ou None si aucune."""
+    try:
+        if CONFIG_BASE.exists():
+            data = _json.loads(CONFIG_BASE.read_text(encoding="utf-8"))
+            chemin = data.get("db_path")
+            if chemin and Path(chemin).exists():
+                return Path(chemin)
+    except (OSError, ValueError):
+        pass
+    return None
+
+
+def memoriser_chemin_base(chemin):
+    """Mémorise le choix de base pour les prochains lancements."""
+    try:
+        CONFIG_BASE.write_text(
+            _json.dumps({"db_path": str(chemin)}, ensure_ascii=False, indent=2),
+            encoding="utf-8")
+    except OSError:
         pass
 
 

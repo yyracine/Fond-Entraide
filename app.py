@@ -695,8 +695,69 @@ class Application(tk.Tk):
             self.lbl_etape.config(text="Paramètres")
 
 
+def _choisir_base(candidats):
+    """Écran d'accueil : laisse l'utilisateur choisir la base à ouvrir.
+
+    Retourne le chemin choisi (Path) ou None si annulé.
+    """
+    import tkinter as tk
+    from tkinter import filedialog, messagebox
+
+    choix = {"chemin": None}
+
+    root = tk.Tk()
+    root.title("Fonds d'Entraide — Choix de la base")
+    root.geometry("460x260")
+    root.resizable(False, False)
+    try:
+        appliquer_icone(root)
+    except Exception:
+        pass
+
+    tk.Label(root, text="Choisissez la base de données à ouvrir",
+             font=("Segoe UI", 12, "bold")).pack(pady=(16, 8))
+
+    def choisir(chemin):
+        choix["chemin"] = chemin
+        root.destroy()
+
+    for c in candidats:
+        tk.Button(root, text=str(c.name), width=40,
+                  command=lambda p=c: choisir(p)).pack(pady=2)
+
+    def parcourir():
+        f = filedialog.askopenfilename(
+            title="Ouvrir une base SQLite",
+            filetypes=[("Base SQLite", "*.db"), ("Tous", "*.*")])
+        if f:
+            choisir(Path(f))
+
+    tk.Button(root, text="Parcourir…", width=40, command=parcourir).pack(pady=2)
+    tk.Button(root, text="Créer une nouvelle base (familles.db)", width=40,
+              command=lambda: choisir(db.BASE_DIR / "familles.db")).pack(pady=2)
+
+    root.mainloop()
+    return choix["chemin"]
+
+
 def main():
-    con = db.initialiser()
+    chemin = db.lire_chemin_base()
+    if chemin is None:
+        # détection automatique des bases existantes
+        candidats = [p for p in (db.BASE_DIR / "cotisations.db",
+                                 db.BASE_DIR / "familles.db")
+                     if p.exists()]
+        if len(candidats) == 1:
+            chemin = candidats[0]
+        elif len(candidats) > 1:
+            chemin = _choisir_base(candidats)
+        else:
+            chemin = db.BASE_DIR / "familles.db"
+        if chemin is not None:
+            db.memoriser_chemin_base(chemin)
+    if chemin is None:
+        return
+    con = db.initialiser(chemin)
     app = Application(con)
     try:
         app.mainloop()

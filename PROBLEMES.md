@@ -27,7 +27,7 @@
 |---|---|---|---|---|
 | P01 | ✅ | Exercices non civils : **tranché** — seuls les exercices civils (début 01/01) sont désormais acceptés ; `mois_impayes` aligné sur `mois_echus` | `parametres.py`, `cotisations.py` | Résolu (décision : exercices civils uniquement) |
 | P02 | 🔴 | Aucun test automatisé, aucun dépôt git | projet | Oui (dette de projet) |
-| P03 | 🔴 | L'application ouvre `familles.db` (vide) au lieu de la base de référence | `db.py`, `app.py` | Oui (choix de produit) |
+| P03 | ✅ | Écran d'accueil au premier lancement pour choisir/ouvrir la base (+ mémorisation) | `app.py`, `db.py` | Résolu |
 | P04 | 🟠 | `montant_total` ≠ somme des `affectations` (arrondi + montant libre) | `cotisations.py` | Oui (modèle) |
 | P05 | 🟠 | `IntegrityError` non interceptée au changement de famille / de clan | `ecran_base.py`, `ecran_grandes_familles.py` | Non (bug d'implémentation) |
 | P06 | 🟠 | L'import aplatit la généalogie (niveaux 2 et 3 accrochés au niveau 1) | `import_complet.py` | Non (script jetable) |
@@ -40,7 +40,7 @@
 | P13 | 🟡 | Thème recoloré par table de correspondance de couleurs en dur | `theme.py` | Non (réécrit) |
 | P14 | ✅ | `PRAGMA user_version = 1` + recréation des vues à l'initialisation | `schema.sql`, `db.py` | Résolu (base) |
 | P15 | ✅ | « Tous » ne coche que les mois échus (plus d'erreur à l'enregistrement) | `ecran_cotisations.py` | Résolu |
-| P16 | 🟡 | Deux bases de données sans règle claire de laquelle fait foi | projet | Oui (choix de produit) |
+| P16 | ✅ | Une seule base à la fois, choisie explicitement (config `base_choisie.json`) | `app.py`, `db.py` | Résolu |
 | P17 | 🟡 | Dates de paiement toutes approximées au 28 | `import_complet.py` | Non (donnée historique) |
 | P18 | 🟡 | Documentation redondante et déjà dérivée (README / RESUME / REALISE / GUIDE) | docs | Oui (à réécrire avec l'app) |
 | P19 | 🟢 | Pas de journalisation (`print`), pas de typage | projet | Non |

@@ -9,6 +9,9 @@ __pycache__/
 *.db-wal
 *.db-shm
 
+# Choix de base local (ne pas versionner)
+base_choisie.json
+
 # Excel source
 *.xlsx
 
