@@ -147,8 +147,8 @@ def lancer(copie, avant_source, empreinte_source_avant):
             apres = {"erreur": str(e)}
         try:
             con.close()
-        except Exception:                            # noqa: BLE001
-            pass
+        except Exception as e:                       # noqa: BLE001
+            print("mode_demo:", e)
         empreinte_apres = empreinte(SOURCE)
         resultat.update({
             "ferme_le": datetime.datetime.now().isoformat(timespec="seconds"),

@@ -30,12 +30,12 @@
 | P03 | ✅ | Écran d'accueil au premier lancement pour choisir/ouvrir la base (+ mémorisation) | `app.py`, `db.py` | Résolu |
 | P04 | 🟠 | `montant_total` ≠ somme des `affectations` (arrondi + montant libre) | `cotisations.py` | Oui (modèle) |
 | P05 | 🟠 | `IntegrityError` non interceptée au changement de famille / de clan | `ecran_base.py`, `ecran_grandes_familles.py` | Non (bug d'implémentation) |
-| P06 | 🟠 | L'import aplatit la généalogie (niveaux 2 et 3 accrochés au niveau 1) | `import_complet.py` | Non (script jetable) |
+| P06 | ✅ | `import_complet.py` conserve le parent réel (niveau 2 → niveau 1, niveau 3 → niveau 2) | `import_complet.py` | Résolu (script ; ré-importer pour appliquer) |
 | P07 | 🟠 | Requêtes N+1 sur toutes les synthèses | `tableau_de_bord.py`, `ecran_cotisations.py` | **Oui** (si le portage copie les requêtes) |
 | P08 | ✅ | Numérotation des reçus migrée vers `paiements.numero_recu` + table `recu_sequences` (high-water mark) | `recus.py`, `schema.sql`, `db.py` | Résolu |
 | P09 | ✅ | Vue `v_solde_membre_campagne` : attendu calculé sur les mois échus (plus `* 12`) | `schema.sql` | Résolu |
 | P10 | 🟡 | Duplication des écrans hiérarchiques (~1 000 lignes) | `app.py`, `ecran_base.py`, `ecran_grandes_familles.py` | Non (disparaît au portage) |
-| P11 | ✅ | `tout_recharger()` remonte désormais les erreurs (plus de `pass` silencieux) | `app.py` | Résolu (partiel : theme/mode_demo restants) |
+| P11 | ✅ | Échecs silencieux corrigés (`app.py`, `theme.py`, `mode_demo.py`) | `app.py`, `theme.py`, `mode_demo.py` | Résolu |
 | P12 | 🟡 | SQL assemblé par f-string, API de CRUD trop permissive | `db.py`, `parametres.py` | Non (réécrit) |
 | P13 | 🟡 | Thème recoloré par table de correspondance de couleurs en dur | `theme.py` | Non (réécrit) |
 | P14 | ✅ | `PRAGMA user_version = 1` + recréation des vues à l'initialisation | `schema.sql`, `db.py` | Résolu (base) |

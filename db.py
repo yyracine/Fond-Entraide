@@ -183,6 +183,20 @@ def initialiser(db_path=None):
 
 
 # ---------------------------------------------------------------------
+#  Colonnes autorisées par table (P12 : évite qu'un appelant injecte
+#  n'importe quelle colonne via **autres).
+# ---------------------------------------------------------------------
+COLONNES_AUTORISEES = {
+    "clans": {"nom", "description"},
+    "grandes_familles": {"nom", "clan_id", "description"},
+    "lignees": {"nom", "grande_famille_id", "description"},
+    "familles": {"nom", "lignee_id", "ordre", "description"},
+    "membres": {"nom", "prenom", "famille_id", "parent_id", "telephone",
+                "ordre_fratrie", "sexe", "statut", "date_statut", "notes"},
+}
+
+
+# ---------------------------------------------------------------------
 #  Niveaux de la hiérarchie : table, clé du parent, libellé affiché
 # ---------------------------------------------------------------------
 NIVEAUX = {
@@ -318,6 +332,13 @@ def ajouter(con, niveau, nom, parent_id=None, **autres):
         autres["parent_id"] = autres.pop("lien_parent_id")
     cfg = NIVEAUX[niveau]
     nom = exiger_nom(nom, f"Le nom du {cfg['singulier'].lower()}")
+
+    # P12 : liste blanche des colonnes modifiables
+    autorisees = COLONNES_AUTORISEES.get(cfg["table"], set())
+    for k in autres:
+        if k not in autorisees:
+            raise ErreurSaisie(
+                f"Colonne non autorisée pour {cfg['table']} : {k!r}.")
     cols, vals = ["nom"], [nom]
     if cfg["parent_col"]:
         if parent_id is None:
@@ -354,6 +375,13 @@ def modifier(con, niveau, id_, nom, **autres):
         autres["parent_id"] = autres.pop("lien_parent_id")
     cfg = NIVEAUX[niveau]
     nom = exiger_nom(nom, f"Le nom du {cfg['singulier'].lower()}")
+
+    # P12 : liste blanche des colonnes modifiables
+    autorisees = COLONNES_AUTORISEES.get(cfg["table"], set())
+    for k in autres:
+        if k not in autorisees:
+            raise ErreurSaisie(
+                f"Colonne non autorisée pour {cfg['table']} : {k!r}.")
     sets, vals = ["nom = ?"], [nom]
     for k, v in autres.items():
         sets.append(f"{k} = ?")

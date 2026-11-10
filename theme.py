@@ -211,8 +211,8 @@ class Gestionnaire:
     def enregistrer_choix(self, con):
         try:
             P.ecrire_parametre(con, CLE, self.palette["nom"])
-        except Exception:
-            pass
+        except Exception as e:
+            print("theme:", e)
 
     # -- application --------------------------------------------------
     def appliquer(self):
@@ -415,8 +415,8 @@ class Gestionnaire:
             cal.selection_clear()
             if annee is not None and mois is not None:
                 cal.navigate(annee + mois // 12, mois % 12 + 1)
-        except Exception:
-            pass
+        except Exception as e:
+            print("theme:", e)
 
 
 # ---------------------------------------------------------------------

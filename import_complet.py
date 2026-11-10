@@ -199,7 +199,8 @@ def main():
         # --- Familles de la lignée
         ordre_famille = 0
         famille_courante = None      # id dans la table familles
-        dernier_membre = None        # dernier membre "niveau 1" = parent potentiel
+        dernier_niveau1 = None       # dernier membre "niveau 1" (patriarche)
+        dernier_niveau2 = None       # dernier membre "niveau 2" (parent des niv.3)
         apres_total = True           # au début, un nom en A ouvre une famille
 
         rows = list(ws.iter_rows(values_only=True))
@@ -231,14 +232,22 @@ def main():
                 cur.execute("INSERT INTO familles (lignee_id, nom, ordre) VALUES (?,?,?)",
                             (lig_id, f"{nom} {prenom or ''}".strip(), ordre_famille))
                 famille_courante = cur.lastrowid
-                dernier_membre = None
+                dernier_niveau1 = None
+                dernier_niveau2 = None
                 apres_total = False
 
             if famille_courante is None:      # sécurité
                 continue
 
-            # parent = dernier membre de niveau 1 (pour les niveaux 2/3)
-            parent_id = dernier_membre if niveau > 1 else None
+            # parent réel selon le niveau :
+            #   niveau 2 -> dernier membre de niveau 1
+            #   niveau 3 -> dernier membre de niveau 2 (sinon niveau 1)
+            if niveau == 1:
+                parent_id = None
+            elif niveau == 2:
+                parent_id = dernier_niveau1
+            else:
+                parent_id = dernier_niveau2 or dernier_niveau1
 
             cur.execute(
                 "INSERT INTO membres (famille_id, parent_id, nom, prenom,"
@@ -248,7 +257,10 @@ def main():
             mid = cur.lastrowid
             nb_m += 1
             if niveau == 1:
-                dernier_membre = mid
+                dernier_niveau1 = mid
+                dernier_niveau2 = None
+            elif niveau == 2:
+                dernier_niveau2 = mid
 
             # --- cotisations
             payes = lit_montants(row)
