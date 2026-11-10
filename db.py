@@ -4,9 +4,18 @@ db.py — Accès à la base et règles communes à tous les écrans de saisie.
 import sqlite3
 from pathlib import Path
 
-BASE_DIR = Path(__file__).parent
+import sys as _sys
+
+if getattr(_sys, "frozen", False):
+    # Ressources embarquées (lecture seule) : _MEIPASS
+    RESOURCE_DIR = Path(getattr(_sys, "_MEIPASS", _sys.executable)).resolve()
+    # Données utilisateur (écriture) : dossier de l'exe
+    BASE_DIR = Path(_sys.executable).resolve().parent
+else:
+    RESOURCE_DIR = Path(__file__).resolve().parent
+    BASE_DIR = RESOURCE_DIR
 DB_PATH = BASE_DIR / "familles.db"
-SCHEMA = BASE_DIR / "schema.sql"
+SCHEMA = RESOURCE_DIR / "schema.sql"
 CONFIG_BASE = BASE_DIR / "base_choisie.json"
 
 
