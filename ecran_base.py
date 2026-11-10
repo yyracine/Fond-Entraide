@@ -333,6 +333,12 @@ class EcranHierarchique(BoutonListePDF, ttk.Frame):
         self.btn_annuler.state(["!disabled"] if self.en_edition else ["disabled"])
         self.btn_nouveau.state(["!disabled"] if self.parents else ["disabled"])
 
+    def focus_initial(self):
+        try:
+            self.ent_nom.focus_set()
+        except Exception:
+            pass
+
     def _vider(self):
         self.var_nom.set("")
         self.var_parent.set("")

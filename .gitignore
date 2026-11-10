@@ -12,6 +12,9 @@ __pycache__/
 # Choix de base local (ne pas versionner)
 base_choisie.json
 
+# Logs
+logs/
+
 # Excel source
 *.xlsx
 

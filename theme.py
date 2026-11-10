@@ -421,8 +421,12 @@ class Gestionnaire:
             cal._style_configure(**reglages) if hasattr(
                 cal, "_style_configure") else None
             cal.selection_clear()
-            if annee is not None and mois is not None:
-                cal.navigate(annee + mois // 12, mois % 12 + 1)
+            if annee is not None and mois is not None and \
+                    hasattr(cal, "navigate"):
+                try:
+                    cal.navigate(annee + mois // 12, mois % 12 + 1)
+                except Exception:
+                    pass
         except Exception as e:
             logging.warning("theme: %s", e)
 
