@@ -181,6 +181,19 @@ def ouvrir_exercice(con, libelle, date_debut, date_fin, montant,
     if f < d:
         raise db.ErreurSaisie("La date de fin doit suivre la date de début.")
 
+    # Règle métier : un exercice doit commencer le 1er janvier de son année
+    # de rattachement. Sinon les numéros de mois (1-12) ne correspondent plus
+    # à la position dans l'exercice et les calculs d'échéance deviennent faux
+    # (voir PROBLEMES.md P01). On refuse donc les exercices décalés.
+    if d.month != 1 or d.day != 1:
+        raise db.ErreurSaisie(
+            "La date de début doit être le 1er janvier de l'année "
+            "de rattachement (exercices décalés non supportés).")
+    if f.year != d.year:
+        raise db.ErreurSaisie(
+            "La date de fin doit rester dans la même année que la date "
+            "de début.")
+
     try:
         montant = float(str(montant).replace(" ", "").replace(",", "."))
     except (TypeError, ValueError):

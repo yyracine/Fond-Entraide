@@ -25,7 +25,7 @@
 
 | ID | Gravité | Problème | Où | Survit à une réécriture ? |
 |---|---|---|---|---|
-| P01 | 🔴 | Exercices non civils : mois échus confondus avec les numéros de mois | `cotisations.py` | **Oui** (règle métier à trancher) |
+| P01 | ✅ | Exercices non civils : **tranché** — seuls les exercices civils (début 01/01) sont désormais acceptés ; `mois_impayes` aligné sur `mois_echus` | `parametres.py`, `cotisations.py` | Résolu (décision : exercices civils uniquement) |
 | P02 | 🔴 | Aucun test automatisé, aucun dépôt git | projet | Oui (dette de projet) |
 | P03 | 🔴 | L'application ouvre `familles.db` (vide) au lieu de la base de référence | `db.py`, `app.py` | Oui (choix de produit) |
 | P04 | 🟠 | `montant_total` ≠ somme des `affectations` (arrondi + montant libre) | `cotisations.py` | Oui (modèle) |
@@ -102,6 +102,14 @@ les cases à cocher deviennent incohérents.
 « nombre de mois entre `date_debut` et `aujourd'hui` », et la validité d'un
 mois se teste sur sa date, pas sur son numéro. À trancher **avant** toute
 réécriture.
+
+**Décision prise (10/11/2026)** : on conserve le modèle où `mois` = mois
+calendrier (1-12 = janvier-décembre) et on **refuse les exercices décalés**
+dans `parametres.ouvrir_exercice()` (date de début doit être le 1er janvier,
+date de fin dans la même année). `mois_impayes()` est aligné sur
+`mois_echus()` au lieu du mois calendrier courant. Les exercices civils
+(ceux de la base) ne sont pas affectés. Tests : `test_ouvrir_exercice_refuse_decale`,
+`test_ouvrir_exercice_accepte_civil`.
 
 ---
 

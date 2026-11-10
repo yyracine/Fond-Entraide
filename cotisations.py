@@ -216,10 +216,15 @@ def situation(con, membre_id, annee):
 
 
 def mois_impayes(con, membre_id, annee, jusqua=None):
-    """Liste des mois non réglés (ou partiellement) jusqu'au mois courant."""
+    """Liste des mois non réglés (ou partiellement) jusqu'au dernier mois échu."""
     sit = situation(con, membre_id, annee)
-    limite = jusqua or (12 if annee < datetime.date.today().year
-                        else datetime.date.today().month)
+    # On utilise les mois ÉCHUS (cohérent avec situation/mois_echus), pas le
+    # mois calendrier courant : un exercice borné à octobre ne doit pas
+    # proposer novembre/décembre. Voir PROBLEMES.md P01.
+    if jusqua is not None:
+        limite = jusqua
+    else:
+        limite = sit["mois_echus"]
     payes = sit["mois_payes"]
     return [m for m in range(1, limite + 1)
             if payes.get(m, 0) < sit["montant_mensuel"]]

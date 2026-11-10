@@ -7,6 +7,7 @@ from pathlib import Path
 
 import cotisations as C
 import db
+import parametres as P
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 REF_DB = BASE_DIR / "cotisations.db"
@@ -119,6 +120,27 @@ def test_enregistrer_versement_arrondi_exact(tmp_path):
     total = con.execute(
         "SELECT montant_total FROM paiements WHERE id = ?", (pid,)).fetchone()["montant_total"]
     assert abs(sum(parts) - total) < 1e-9
+
+
+def test_ouvrir_exercice_refuse_decale(tmp_path):
+    if not REF_DB.exists():
+        import pytest
+        pytest.skip("base de référence absente")
+    con, _ = _copie_db(tmp_path)
+    try:
+        P.ouvrir_exercice(con, "Decale", "2026-04-01", "2027-03-31", 1000, 2026)
+    except db.ErreurSaisie:
+        return
+    raise AssertionError("exercice décalé accepté")
+
+
+def test_ouvrir_exercice_accepte_civil(tmp_path):
+    if not REF_DB.exists():
+        import pytest
+        pytest.skip("base de référence absente")
+    con, _ = _copie_db(tmp_path)
+    action = P.ouvrir_exercice(con, "Civil", "2027-01-01", "2027-12-31", 1000, 2027)
+    assert action in ("cree", "modifie")
 
 
 def test_situation_complet_logique(con):
