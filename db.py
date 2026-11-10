@@ -135,9 +135,23 @@ def initialiser(db_path=None):
     """Crée les tables et les vues si nécessaire. Retourne la connexion."""
     chemin = db_path or DB_PATH
     con = connecter(chemin)
+    # recréer les vues (pour prendre en compte les évolutions de schema.sql)
+    for v in ("v_membre_complet", "v_cotisations_mensuelles",
+              "v_solde_membre_campagne"):
+        try:
+            con.execute("DROP VIEW IF EXISTS " + v)
+        except sqlite3.Error:
+            pass
+    con.commit()
     con.executescript(SCHEMA.read_text(encoding="utf-8"))
     con.commit()
     _migrer_recus(con)
+    # version de schéma (P14) : permet de détecter une base ancienne
+    try:
+        con.execute("PRAGMA user_version = 1")
+        con.commit()
+    except sqlite3.Error:
+        pass
     return con
 
 

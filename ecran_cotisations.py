@@ -546,12 +546,15 @@ class EcranCotisations(ttk.Frame):
             return
         payes = C.mois_payes(self.con, self.membre_id, annee)
         mensuel = C.situation(self.con, self.membre_id, annee)["montant_mensuel"]
+        echus = C.mois_echus(self.con, annee)
         for m, var in self.cases.items():
             deja_paye = payes.get(m, 0) >= mensuel
+            # « Tous » ne coche que les mois déjà échus : cocher un mois
+            # futur mène à un refus à l'enregistrement (voir P15).
             if mois is None:
-                var.set(not deja_paye)
+                var.set((not deja_paye) and m <= echus)
             else:
-                var.set(m in mois and not deja_paye)
+                var.set(m in mois and not deja_paye and m <= echus)
         self._maj_montant()
 
     def _cocher_impayes(self):

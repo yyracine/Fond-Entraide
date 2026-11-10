@@ -563,22 +563,33 @@ class Application(tk.Tk):
     # ------------------------------------------------------------------
     def tout_recharger(self):
         """Relit la base et remet tous les écrans à jour."""
+        erreurs = []
         for ecran in (self.ecran, self.ecran_gf, self.ecran_lg,
                       self.ecran_fa, self.ecran_me):
             try:
                 ecran.recharger_parents()
                 ecran.recharger()
-            except Exception:
-                pass
+            except Exception as e:
+                erreurs.append(str(e))
+                print("tout_recharger:", e)
         for ecran in (self.ecran_co, self.ecran_tb, self.ecran_pa):
             try:
                 if ecran is self.ecran_pa:
                     ecran.recharger()
                 else:
                     ecran.recharger_annees()
-            except Exception:
-                pass
-        self.etat.info("Données rechargées.")
+            except Exception as e:
+                erreurs.append(str(e))
+                print("tout_recharger:", e)
+        if erreurs:
+            self.etat.info("Rechargement partiel : %d erreur(s). "
+                           "Voir la console." % len(erreurs))
+            messagebox.showwarning(
+                "Rechargement",
+                "Certaines vues n'ont pas pu être rechargées :\n"
+                + "\n".join(erreurs[:5]))
+        else:
+            self.etat.info("Données rechargées.")
 
     # ------------------------------------------------------------------
     #  Fermeture : sauvegarde automatique (n et n-1 conservées)

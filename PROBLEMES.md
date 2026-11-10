@@ -33,13 +33,13 @@
 | P06 | 🟠 | L'import aplatit la généalogie (niveaux 2 et 3 accrochés au niveau 1) | `import_complet.py` | Non (script jetable) |
 | P07 | 🟠 | Requêtes N+1 sur toutes les synthèses | `tableau_de_bord.py`, `ecran_cotisations.py` | **Oui** (si le portage copie les requêtes) |
 | P08 | ✅ | Numérotation des reçus migrée vers `paiements.numero_recu` + table `recu_sequences` (high-water mark) | `recus.py`, `schema.sql`, `db.py` | Résolu |
-| P09 | 🟡 | La vue `v_solde_membre_campagne` calcule `montant_mensuel * 12` | `schema.sql` | Non (vue non utilisée) |
+| P09 | ✅ | Vue `v_solde_membre_campagne` : attendu calculé sur les mois échus (plus `* 12`) | `schema.sql` | Résolu |
 | P10 | 🟡 | Duplication des écrans hiérarchiques (~1 000 lignes) | `app.py`, `ecran_base.py`, `ecran_grandes_familles.py` | Non (disparaît au portage) |
-| P11 | 🟡 | Échecs silencieux (`except Exception: pass`) | `app.py`, `theme.py`, `mode_demo.py` | Partiellement |
+| P11 | ✅ | `tout_recharger()` remonte désormais les erreurs (plus de `pass` silencieux) | `app.py` | Résolu (partiel : theme/mode_demo restants) |
 | P12 | 🟡 | SQL assemblé par f-string, API de CRUD trop permissive | `db.py`, `parametres.py` | Non (réécrit) |
 | P13 | 🟡 | Thème recoloré par table de correspondance de couleurs en dur | `theme.py` | Non (réécrit) |
-| P14 | 🟡 | Pas de version de schéma, pas de migration | `schema.sql`, `db.py` | **Oui** (à prévoir) |
-| P15 | 🟡 | « Tous » coche aussi les mois futurs → erreur garantie à l'enregistrement | `ecran_cotisations.py` | Oui (UX à spécifier) |
+| P14 | ✅ | `PRAGMA user_version = 1` + recréation des vues à l'initialisation | `schema.sql`, `db.py` | Résolu (base) |
+| P15 | ✅ | « Tous » ne coche que les mois échus (plus d'erreur à l'enregistrement) | `ecran_cotisations.py` | Résolu |
 | P16 | 🟡 | Deux bases de données sans règle claire de laquelle fait foi | projet | Oui (choix de produit) |
 | P17 | 🟡 | Dates de paiement toutes approximées au 28 | `import_complet.py` | Non (donnée historique) |
 | P18 | 🟡 | Documentation redondante et déjà dérivée (README / RESUME / REALISE / GUIDE) | docs | Oui (à réécrire avec l'app) |

@@ -290,11 +290,25 @@ SELECT
     m.nom || ' ' || COALESCE(m.prenom,'') AS membre,
     f.nom                           AS famille,
     c.annee                         AS annee,
-    c.montant_mensuel * 12          AS attendu_annuel,
+    c.montant_mensuel * CASE
+        WHEN c.date_debut IS NULL OR c.date_fin IS NULL THEN 12
+        WHEN date('now') < date(c.date_debut) THEN 0
+        ELSE (CAST(strftime('%Y', MIN(date('now'), date(c.date_fin))) AS INTEGER)
+              - CAST(strftime('%Y', c.date_debut) AS INTEGER)) * 12
+             + (CAST(strftime('%m', MIN(date('now'), date(c.date_fin))) AS INTEGER)
+              - CAST(strftime('%m', c.date_debut) AS INTEGER)) + 1
+    END AS attendu_annuel,
     COALESCE((SELECT SUM(a.montant) FROM affectations a
               JOIN paiements p ON p.id = a.paiement_id
               WHERE p.membre_id = m.id AND a.annee = c.annee), 0) AS verse,
-    c.montant_mensuel * 12
+    c.montant_mensuel * CASE
+        WHEN c.date_debut IS NULL OR c.date_fin IS NULL THEN 12
+        WHEN date('now') < date(c.date_debut) THEN 0
+        ELSE (CAST(strftime('%Y', MIN(date('now'), date(c.date_fin))) AS INTEGER)
+              - CAST(strftime('%Y', c.date_debut) AS INTEGER)) * 12
+             + (CAST(strftime('%m', MIN(date('now'), date(c.date_fin))) AS INTEGER)
+              - CAST(strftime('%m', c.date_debut) AS INTEGER)) + 1
+    END
       - COALESCE((SELECT SUM(a.montant) FROM affectations a
                   JOIN paiements p ON p.id = a.paiement_id
                   WHERE p.membre_id = m.id AND a.annee = c.annee), 0) AS solde
