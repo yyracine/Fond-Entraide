@@ -20,6 +20,9 @@ build/
 dist/
 *.spec
 
+# Installer payload
+payload.zip
+
 # Excel source
 *.xlsx
 
