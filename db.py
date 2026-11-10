@@ -14,14 +14,14 @@ class ErreurSaisie(Exception):
     """Erreur métier destinée à être affichée à l'utilisateur."""
 
 
-def connecter(db_path=None):
+def connecter(db_path: str | None = None) -> sqlite3.Connection:
     con = sqlite3.connect(db_path or DB_PATH)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA foreign_keys = ON")
     return con
 
 
-def connecter_lecture_seule(db_path):
+def connecter_lecture_seule(db_path: str) -> sqlite3.Connection:
     """Ouvre une base sans aucun droit d'écriture.
 
     Utilisé par l'aperçu du tableau de bord : on peut consulter et
@@ -135,7 +135,7 @@ def _migrer_recus(con):
 import json as _json
 
 
-def lire_chemin_base():
+def lire_chemin_base() -> "Path | None":
     """Chemin de la base choisie par l'utilisateur, ou None si aucune."""
     try:
         if CONFIG_BASE.exists():
@@ -148,7 +148,7 @@ def lire_chemin_base():
     return None
 
 
-def memoriser_chemin_base(chemin):
+def memoriser_chemin_base(chemin: "Path") -> None:
     """Mémorise le choix de base pour les prochains lancements."""
     try:
         CONFIG_BASE.write_text(
@@ -158,7 +158,7 @@ def memoriser_chemin_base(chemin):
         pass
 
 
-def initialiser(db_path=None):
+def initialiser(db_path: str | None = None) -> sqlite3.Connection:
     """Crée les tables et les vues si nécessaire. Retourne la connexion."""
     chemin = db_path or DB_PATH
     con = connecter(chemin)

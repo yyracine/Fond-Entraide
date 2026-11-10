@@ -7,9 +7,12 @@ ajoutées progressivement, chacune dans son fichier d'écran.
 
 Lancement : python app.py
 """
+import logging
 import tkinter as tk
 from pathlib import Path
 from tkinter import ttk, messagebox
+
+import logging_setup
 
 import db
 from liste_pdf_mixin import BoutonListePDF
@@ -119,7 +122,7 @@ def appliquer_icone(fenetre, chemin=None):
     """
     fichier = Path(chemin) if chemin else Path(__file__).with_name(ICO)
     if not fichier.exists():
-        print(f"Icone introuvable : {fichier}")
+        logging.warning("Icone introuvable : %s", fichier)
         return False
     try:
         fenetre.iconbitmap(default=str(fichier))
@@ -132,7 +135,7 @@ def appliquer_icone(fenetre, chemin=None):
         fenetre._icone_tk = image      # garder une reference (sinon GC)
         return True
     except tk.TclError as e:
-        print(f"Icone non appliquee : {e}")
+        logging.warning("Icone non appliquee : %s", e)
         return False
 
 def icone_autonome(racine):
@@ -346,7 +349,7 @@ class Application(tk.Tk):
                 ecran.recharger()
             except Exception as e:
                 erreurs.append(str(e))
-                print("tout_recharger:", e)
+                logging.warning("tout_recharger: %s", e)
         for ecran in (self.ecran_co, self.ecran_tb, self.ecran_pa):
             try:
                 if ecran is self.ecran_pa:
@@ -355,7 +358,7 @@ class Application(tk.Tk):
                     ecran.recharger_annees()
             except Exception as e:
                 erreurs.append(str(e))
-                print("tout_recharger:", e)
+                logging.warning("tout_recharger: %s", e)
         if erreurs:
             self.etat.info("Rechargement partiel : %d erreur(s). "
                            "Voir la console." % len(erreurs))
@@ -377,9 +380,9 @@ class Application(tk.Tk):
         try:
             chemin = P.sauvegarder(self.con)
             self.con.close()
-            print(f"Sauvegarde automatique : {chemin}")
+            logging.info("Sauvegarde automatique : %s", chemin)
         except Exception as e:
-            print(f"Sauvegarde automatique impossible : {e}")
+            logging.warning("Sauvegarde automatique impossible : %s", e)
         self.destroy()
 
     @staticmethod
@@ -516,6 +519,7 @@ def _choisir_base(candidats):
 
 
 def main():
+    logging_setup.configurer()
     chemin = db.lire_chemin_base()
     if chemin is None:
         # détection automatique des bases existantes

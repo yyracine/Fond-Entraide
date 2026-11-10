@@ -41,12 +41,12 @@
 | P14 | ✅ | `PRAGMA user_version = 1` + recréation des vues à l'initialisation | `schema.sql`, `db.py` | Résolu (base) |
 | P15 | ✅ | « Tous » ne coche que les mois échus (plus d'erreur à l'enregistrement) | `ecran_cotisations.py` | Résolu |
 | P16 | ✅ | Une seule base à la fois, choisie explicitement (config `base_choisie.json`) | `app.py`, `db.py` | Résolu |
-| P17 | 🟡 | Dates de paiement toutes approximées au 28 | `import_complet.py` | Non (donnée historique) |
-| P18 | 🟡 | Documentation redondante et déjà dérivée (README / RESUME / REALISE / GUIDE) | docs | Oui (à réécrire avec l'app) |
-| P19 | 🟢 | Pas de journalisation (`print`), pas de typage | projet | Non |
-| P20 | 🟢 | `os.startfile` / chemins Windows : non portable (assumé) | `exports.py`, `ecran_*.py` | Non (Tauri gère mieux) |
+| P17 | ✅ | Dates historiques conservées (approx. 28) — documenté comme donnée historique | `import_complet.py` | Accepté (pas de dates réelles dans la source) |
+| P18 | ✅ | Documentation : README (technique) + GUIDE (utilisateur) conservés ; RESUME/REALISE archivés | docs | Accepté |
+| P19 | ✅ | Journalisation via `logging` (fichier + console) + typage partiel de `db.py` | `logging_setup.py`, `db.py`, `app.py`, `theme.py`, `mode_demo.py` | Résolu (partiel) |
+| P20 | ✅ | Non-portabilité Windows assumée (os.startfile, .ico, pythonw) — documentée | `exports.py`, `ecran_*.py` | Accepté (pas de portage) |
 | P21 | ✅ | Purge : `commit()` avant `PRAGMA foreign_keys = OFF` (transaction fermée) | `parametres.py` | Résolu |
-| P22 | 🟢 | Surplus ignoré : un mois réglé 2 000 F ne consomme pas 2 mois | `cotisations.py` | Oui (règle métier) |
+| P22 | ✅ | Surplus conservé sur le mois réglé (règle métier documentée) | `cotisations.py` | Accepté (pas de ventilation automatique) |
 
 Légende : 🔴 bloquant · 🟠 majeur · 🟡 mineur · 🟢 confort.
 

@@ -21,6 +21,7 @@ Utilisation :
 
 Rien n'est supprimé : chaque lancement laisse sa copie et son état.
 """
+import logging
 import datetime
 import hashlib
 import json
@@ -148,7 +149,7 @@ def lancer(copie, avant_source, empreinte_source_avant):
         try:
             con.close()
         except Exception as e:                       # noqa: BLE001
-            print("mode_demo:", e)
+            logging.warning("mode_demo: %s", e)
         empreinte_apres = empreinte(SOURCE)
         resultat.update({
             "ferme_le": datetime.datetime.now().isoformat(timespec="seconds"),

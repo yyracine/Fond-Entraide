@@ -13,6 +13,7 @@ les 8 écrans.
 
 Le choix est mémorisé dans la table `parametres` (clé « theme »).
 """
+import logging
 import tkinter as tk
 from tkinter import ttk
 
@@ -219,7 +220,7 @@ class Gestionnaire:
         try:
             P.ecrire_parametre(con, CLE, self.palette["nom"])
         except Exception as e:
-            print("theme:", e)
+            logging.warning("theme: %s", e)
 
     # -- application --------------------------------------------------
     def appliquer(self):
@@ -423,7 +424,7 @@ class Gestionnaire:
             if annee is not None and mois is not None:
                 cal.navigate(annee + mois // 12, mois % 12 + 1)
         except Exception as e:
-            print("theme:", e)
+            logging.warning("theme: %s", e)
 
 
 # ---------------------------------------------------------------------
