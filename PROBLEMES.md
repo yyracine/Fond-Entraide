@@ -37,7 +37,7 @@
 | P10 | OK | Ecrans hierarchiques consolides sur EcranHierarchique | pp.py, ecran_base.py, ecran_grandes_familles.py | Resolu |
 | P11 | ✅ | Échecs silencieux corrigés (`app.py`, `theme.py`, `mode_demo.py`) | `app.py`, `theme.py`, `mode_demo.py` | Résolu |
 | P12 | 🟡 | SQL assemblé par f-string, API de CRUD trop permissive | `db.py`, `parametres.py` | Non (réécrit) |
-| P13 | 🟡 | Thème : couverture des couleurs étendue (6 manquantes ajoutées) ; migration complète vers jetons à faire | `theme.py` | Partiel (portage non prévu) |
+| P13 | ✅ | Thème : toutes les couleurs codées en dur sont mappées ; repli identité pour les inconnues | `theme.py` | Résolu (couverture complète) |
 | P14 | ✅ | `PRAGMA user_version = 1` + recréation des vues à l'initialisation | `schema.sql`, `db.py` | Résolu (base) |
 | P15 | ✅ | « Tous » ne coche que les mois échus (plus d'erreur à l'enregistrement) | `ecran_cotisations.py` | Résolu |
 | P16 | ✅ | Une seule base à la fois, choisie explicitement (config `base_choisie.json`) | `app.py`, `db.py` | Résolu |
