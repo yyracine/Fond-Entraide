@@ -488,8 +488,10 @@ def purger(con, niveau="donnees"):
                  "grandes_familles", "clans"]
 
     compte = {}
-    # on désactive les clés étrangères le temps de la purge en respectant
-    # l'ordre descendant, puis on remet les compteurs à zéro
+    # on désactive les clés étrangères le temps de la purge. IMPORTANT :
+    # PRAGMA foreign_keys est ignoré s'il existe une transaction ouverte,
+    # d'où le commit() préalable (voir PROBLEMES.md P21).
+    con.commit()
     con.execute("PRAGMA foreign_keys = OFF")
     try:
         for table in ordre:
