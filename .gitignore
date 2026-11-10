@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Bases de données (données réelles, ne pas versionner)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Excel source
+*.xlsx
+
+# Sauvegardes et démo
+sauvegardes/
+demo/
+_rev_*_travail.db
+
+# Icônes binaires optionnelles
+*.ico
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Éditeurs
+.vscode/
+.idea/
