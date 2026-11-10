@@ -45,7 +45,7 @@
 | P18 | 🟡 | Documentation redondante et déjà dérivée (README / RESUME / REALISE / GUIDE) | docs | Oui (à réécrire avec l'app) |
 | P19 | 🟢 | Pas de journalisation (`print`), pas de typage | projet | Non |
 | P20 | 🟢 | `os.startfile` / chemins Windows : non portable (assumé) | `exports.py`, `ecran_*.py` | Non (Tauri gère mieux) |
-| P21 | 🟢 | Purge : `PRAGMA foreign_keys = OFF` fragile, `_vider_membres` en boucle | `parametres.py` | Oui (logique à revoir) |
+| P21 | ✅ | Purge : `commit()` avant `PRAGMA foreign_keys = OFF` (transaction fermée) | `parametres.py` | Résolu |
 | P22 | 🟢 | Surplus ignoré : un mois réglé 2 000 F ne consomme pas 2 mois | `cotisations.py` | Oui (règle métier) |
 
 Légende : 🔴 bloquant · 🟠 majeur · 🟡 mineur · 🟢 confort.
